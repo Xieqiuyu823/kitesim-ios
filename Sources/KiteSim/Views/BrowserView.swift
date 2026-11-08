@@ -183,6 +183,7 @@ enum WebViewCleaner {
         return alipaySuffixes.contains { d == $0 || d.hasSuffix("." + $0) }
     }
 
+    @MainActor
     static func clearKeepingAlipay() async {
         let store = WKWebsiteDataStore.default()
         let cookieStore = store.httpCookieStore
@@ -195,7 +196,8 @@ enum WebViewCleaner {
         for cookie in cookies where !isAlipay(cookie.domain) {
             await withCheckedContinuation {
                 (continuation: CheckedContinuation<Void, Never>) in
-                cookieStore.deleteCookie(cookie) { continuation.resume() }
+                // iOS 26 SDK 将 deleteCookie(_:completionHandler:) 更名为 delete(_:completionHandler:)
+                cookieStore.delete(cookie) { continuation.resume() }
             }
         }
 
