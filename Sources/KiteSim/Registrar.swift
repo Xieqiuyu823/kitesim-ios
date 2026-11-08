@@ -38,18 +38,29 @@ final class Registrar {
         log("  邮箱验证码: \(emailCode)")
 
         log("[4/5] 识别图形验证码...")
-        let solved = try await solveCaptcha(log: log)
+        var solved = try await solveCaptcha(log: log)
 
         log("[5/5] 提交注册...")
         let password = KiteSimAPI.genPassword()
-        return try await api.register(
-            email: mail.address,
-            password: password,
-            emailCode: emailCode,
-            captchaKey: solved.key,
-            captchaCode: solved.code,
-            invite: invite
-        )
+        for attempt in 1...2 {
+            do {
+                return try await api.register(
+                    email: mail.address,
+                    password: password,
+                    emailCode: emailCode,
+                    captchaKey: solved.key,
+                    captchaCode: solved.code,
+                    invite: invite
+                )
+            } catch {
+                // 服务端也可能判「验证码不正确」（图片本身难认），换一张再提交一次
+                let text = error.localizedDescription
+                guard attempt == 1, text.contains("验证码") else { throw error }
+                log("  服务端判定验证码不正确，换一张重试...")
+                solved = try await solveCaptcha(log: log)
+            }
+        }
+        throw KSError.api("注册失败")
     }
 
     /// 抓 2~3 张验证码分别识别，取「4 位且置信度最高」的那一张提交。

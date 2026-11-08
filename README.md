@@ -15,15 +15,33 @@
 | 流水线 | `.github/workflows/build-unsigned-ipa.yml`（push 到 `main` 自动触发） |
 | 成功运行 | run #2，`success`，耗时约 1 分半 |
 | 构建机 | `macos-26`，**Xcode 26.6 (17F113)**，**iPhoneOS 26.5 SDK** |
-| 产物 | `KiteSim-unsigned.ipa`，**14,217,836 字节** |
+| 产物 | `KiteSim-unsigned.ipa`，**14,217,836 字节**（v1.0） |
 | SHA-256 | `e25e789960abb23ef4a19cce3039135cc4d485bf740e0eca18fe59806fe9e977` |
 | Release | <https://github.com/Xieqiuyu823/kitesim-ios/releases/tag/unsigned-2> |
+
+### v1.1 变更（三个问题）
+
+1. **图形验证码全部识别失败 —— 已定位为行序 bug。**
+   `CGBitmapContext` 的像素缓冲第 0 行本来就对应图像最上面一行，而 v1.0 在 `draw` 前又多做了
+   一次 `translateBy(0,h) + scaleBy(1,-1)`，等于把每张验证码上下镜像后再喂给模型，识别结果必然
+   不是 4 位字符。已删掉该翻转，并补了两层兜底：
+   - `recognizeDetailed` 在主路径拿不到 4 位时，用镜像图再推一次，取「4 位优先、置信度更高」；
+   - 注册时连抓 2~3 张验证码择优提交，服务端仍判「验证码不正确」时自动换图重提一次。
+   - 「网络」页新增**验证码识别自检**：抓一张真图，把原图和识别结果并排显示，可肉眼对照。
+2. **App 图标** —— 直接复用安卓 adaptive icon 的两个矢量路径（同一个 `pathData`），
+   用 `#6200EE` 系紫色渐变做底，渲染成 1024×1024 无 alpha 的 `AppIcon-1024.png`，
+   放进 `Sources/KiteSim/Assets.xcassets/AppIcon.appiconset/`。构建脚本会断言
+   `Assets.car` 与 `CFBundleIconName=AppIcon` 都存在。
+3. **液态玻璃加强** —— 新增 `LiquidBackground`（紫/青/品红三团缓慢漂移的色斑，玻璃后面
+   有东西可折射才像"液体"）；所有卡片改用 `glassEffect` + 边缘高光描边；
+   brand 主色改为与图标一致的紫色。
 
 流水线内置的自检在失败时会中断构建：
 
 1. 主 `.app` 不含 `_CodeSignature`；
 2. 主 `.app` 不含 `embedded.mobileprovision`；
-3. `common_old.onnx` 与 `charset.json` 确实位于 App 包内（最大 2 层目录）。
+3. `common_old.onnx` 与 `charset.json` 确实位于 App 包内（最大 2 层目录）；
+4. `Assets.car` 存在，且 `CFBundleIconName=AppIcon`、`assetutil` 能在 `Assets.car` 里找到 `AppIcon`。
 
 ## 二、怎么重新构建
 

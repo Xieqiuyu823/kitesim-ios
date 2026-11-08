@@ -134,6 +134,13 @@ if [[ "$ICON_NAME" != "AppIcon" ]]; then
   echo "错误：Info.plist 缺少 CFBundleIconName=AppIcon（实际：'$ICON_NAME'）" >&2
   exit 1
 fi
+if command -v xcrun >/dev/null; then
+  ASSET_INFO="$(xcrun assetutil --info "$APP_PATH/Assets.car" 2>/dev/null || true)"
+  if [[ -n "$ASSET_INFO" ]] && ! printf '%s' "$ASSET_INFO" | grep -q "AppIcon"; then
+    echo "错误：Assets.car 里找不到 AppIcon（actool 没有编译出图标）" >&2
+    exit 1
+  fi
+fi
 
 echo "==> 打包标准未签名 IPA"
 rm -rf "$OUTPUT_DIR/Payload"
