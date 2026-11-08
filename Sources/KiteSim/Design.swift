@@ -39,6 +39,18 @@ enum KSDesign {
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
+
+    // MARK: 圆角
+    //
+    // 全 App 只允许这三档圆角，避免出现「这块 16、那块 20、另一块 26」的参差感。
+    // 层级关系：页面级卡片 > 卡片内的子块 > 小型控件/图片。
+
+    /// 页面级卡片（玻璃面板、日志面板、首屏 Hero）
+    static let cardRadius: CGFloat = 26
+    /// 卡片内部的子块（账号行、嵌套容器）
+    static let rowRadius: CGFloat = 20
+    /// 小控件（图标底、缩略图、徽标）
+    static let controlRadius: CGFloat = 12
 }
 
 // MARK: - 液态背景
@@ -128,7 +140,7 @@ struct GlassPanel<Content: View>: View {
 
     init(
         tint: Color = KSDesign.accent,
-        radius: CGFloat = 26,
+        radius: CGFloat = KSDesign.cardRadius,
         @ViewBuilder content: () -> Content
     ) {
         self.tint = tint
@@ -182,26 +194,47 @@ struct SectionHeader: View {
     }
 }
 
-/// 日志用深色不透明面板，避免玻璃折射影响等宽小字的可读性
+/// 日志用深色面板：不透明底色保证等宽小字可读，形状/圆角与玻璃卡片完全一致。
+/// 注意 ScrollView 必须显式 clip，否则滚动时文字会顶到圆角外面，
+/// 在 App 退到后台被系统缩略（App Switcher）时那块方角会特别扎眼。
 struct LogConsole: View {
     let lines: [String]
 
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: KSDesign.cardRadius, style: .continuous)
+    }
+
+    private var text: String {
+        lines.isEmpty ? "（暂无日志）" : lines.joined(separator: "\n")
+    }
+
     var body: some View {
-        ScrollView {
-            Text(lines.joined(separator: "\n"))
+        ScrollView(.vertical) {
+            Text(text)
                 .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(Color(red: 0.85, green: 0.89, blue: 0.95))
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
+                .padding(.horizontal, 15)
+                .padding(.vertical, 14)
+                .textSelection(.enabled)
         }
+        .scrollIndicators(.hidden)
         .frame(height: 190)
+        .clipShape(shape)
         .background(
-            Color(red: 0.05, green: 0.05, blue: 0.09).opacity(0.92),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            ZStack {
+                Color(red: 0.05, green: 0.05, blue: 0.09).opacity(0.92)
+                // 顶部一层极淡的高光，与玻璃卡片共用同一套「液体厚度」语言
+                LinearGradient(
+                    colors: [.white.opacity(0.07), .clear],
+                    startPoint: .top,
+                    endPoint: .center
+                )
+            },
+            in: shape
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(.white.opacity(0.10), lineWidth: 0.8)
+            shape.strokeBorder(.white.opacity(0.12), lineWidth: 0.8)
         }
     }
 }
@@ -215,7 +248,10 @@ extension View {
     }
 
     /// 内容卡片：玻璃 + 边缘高光（不可交互内容用，避免多余触摸反馈）
-    func glassCard(tint: Color = KSDesign.accent, radius: CGFloat = 24) -> some View {
+    func glassCard(
+        tint: Color = KSDesign.accent,
+        radius: CGFloat = KSDesign.cardRadius
+    ) -> some View {
         glassEffect(
             .regular.tint(tint.opacity(0.10)),
             in: RoundedRectangle(cornerRadius: radius, style: .continuous)

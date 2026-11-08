@@ -44,27 +44,30 @@ struct AccountsView: View {
                         }
                     }
 
-                    // 多个玻璃控件放进 Container，让它们能融合/形变并降低渲染开销
-                    GlassEffectContainer(spacing: 24) {
-                        HStack(spacing: 12) {
-                            Button {
-                                state.selfTest()
-                            } label: {
-                                Label("网络自检", systemImage: "stethoscope")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.glass)
-                            .controlSize(.regular)
-
-                            Button(role: .destructive) {
-                                showClearConfirm = true
-                            } label: {
-                                Label("清空账号", systemImage: "trash")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.glass)
-                            .controlSize(.regular)
+                    // 注意：这两个按钮**不要**放进 GlassEffectContainer。
+                    // 容器会把「间距小于 spacing 参数」的玻璃形状融合成一整块，
+                    // 之前 spacing: 24 而 HStack 间距只有 12，两片玻璃被吸在一起变成一坨。
+                    // 各自独立成片、间距 14 才是想要的效果。
+                    HStack(spacing: 14) {
+                        Button {
+                            state.selfTest()
+                        } label: {
+                            Label("网络自检", systemImage: "stethoscope")
+                                .frame(maxWidth: .infinity)
                         }
+                        .buttonStyle(.glass)
+                        .tint(KSDesign.accent)
+                        .controlSize(.regular)
+
+                        Button(role: .destructive) {
+                            showClearConfirm = true
+                        } label: {
+                            Label("清空账号", systemImage: "trash")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.glass)
+                        .tint(.red)
+                        .controlSize(.regular)
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -127,7 +130,7 @@ struct AccountsView: View {
                 .frame(width: 54, height: 54)
                 .background(
                     KSDesign.brandGradient,
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    in: RoundedRectangle(cornerRadius: KSDesign.controlRadius + 4, style: .continuous)
                 )
                 .shadow(color: KSDesign.accent.opacity(0.35), radius: 12, y: 5)
 
@@ -141,7 +144,7 @@ struct AccountsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .glassCard(radius: 26)
+        .glassCard(radius: KSDesign.cardRadius)
     }
 }
 
@@ -183,6 +186,6 @@ private struct AccountRow: View {
             }
         }
         .padding(14)
-        .glassCard(radius: 20)
+        .glassCard(radius: KSDesign.rowRadius)
     }
 }

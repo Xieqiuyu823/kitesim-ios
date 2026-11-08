@@ -84,7 +84,7 @@ struct NetworkView: View {
                                         .padding(6)
                                         .background(
                                             Color.white,
-                                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            in: RoundedRectangle(cornerRadius: KSDesign.controlRadius, style: .continuous)
                                         )
 
                                     Text(state.captchaResult)
