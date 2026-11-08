@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if os(iOS)
+import UIKit
+#endif
+
 struct NetworkView: View {
     @EnvironmentObject private var state: AppState
 
@@ -51,6 +55,50 @@ struct NetworkView: View {
                         }
                     }
 
+                    GlassPanel(tint: .indigo) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(title: "验证码识别自检", systemImage: "text.viewfinder")
+                            Text("抓一张真实验证码在本地识别，把识别结果和原图放在一起，方便肉眼核对。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            Button {
+                                state.checkCaptcha()
+                            } label: {
+                                HStack {
+                                    if state.isCheckingCaptcha { ProgressView() }
+                                    Text(state.isCheckingCaptcha ? "识别中..." : "抓一张试试")
+                                }
+                            }
+                            .buttonStyle(.glassProminent)
+                            .tint(KSDesign.accent)
+                            .disabled(state.isCheckingCaptcha)
+
+                            if let preview = state.captchaPreview, let ui = UIImage(data: preview) {
+                                HStack(alignment: .center, spacing: 14) {
+                                    Image(uiImage: ui)
+                                        .resizable()
+                                        .interpolation(.none)
+                                        .scaledToFit()
+                                        .frame(height: 44)
+                                        .padding(6)
+                                        .background(
+                                            Color.white,
+                                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        )
+
+                                    Text(state.captchaResult)
+                                        .font(.system(.caption, design: .monospaced))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            } else if !state.captchaResult.isEmpty {
+                                Text(state.captchaResult)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                    }
+
                     GlassPanel(tint: .orange) {
                         VStack(alignment: .leading, spacing: 12) {
                             SectionHeader(title: "地区检测", systemImage: "map")
@@ -81,7 +129,7 @@ struct NetworkView: View {
                 }
                 .padding(16)
             }
-            .background(KSDesign.background.ignoresSafeArea())
+            .liquidScreenBackground()
             .navigationTitle("网络")
         }
     }

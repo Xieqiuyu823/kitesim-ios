@@ -124,8 +124,11 @@ final class KiteSimAPI {
         var lastError = ""
         for i in 0..<maxTry {
             let captcha = try await getCaptcha()
-            let code = try ocr.recognize(captcha.imageData)
-            if code.count != 4 { continue }
+            let result = try ocr.recognizeDetailed(captcha.imageData)
+            let shown = result.code.isEmpty ? "(空)" : result.code
+            log("  验证码识别: \(shown)  置信度 \(String(format: "%.2f", result.score))")
+            if result.code.count != KiteSimCaptcha.length { continue }
+            let code = result.code
 
             let obj = try await http.json(
                 "\(base)/index/sign-in",

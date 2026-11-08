@@ -3,3 +3,4 @@
 *.yml text eol=lf
 *.onnx binary
 *.ipa binary
+*.png binary

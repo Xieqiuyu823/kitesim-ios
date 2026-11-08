@@ -23,6 +23,11 @@ final class AppState: ObservableObject {
     @Published var regionReport = ""
     @Published var isCheckingRegion = false
 
+    /// 验证码识别自检
+    @Published var captchaPreview: Data?
+    @Published var captchaResult = ""
+    @Published var isCheckingCaptcha = false
+
     private let store = AccountStore()
     private let registrar = Registrar.shared
     private let api = KiteSimAPI.shared
@@ -148,8 +153,26 @@ final class AppState: ObservableObject {
         }
     }
 
-    func checkRegion() {
-        guard !token.isEmpty else {
+    // MARK: 验证码识别自检
+
+    func checkCaptcha() {
+        guard !isCheckingCaptcha else { return }
+        isCheckingCaptcha = true
+        captchaResult = "识别中..."
+        Task {
+            do {
+                let (image, result) = try await registrar.recognizeOne()
+                captchaPreview = image
+                let shown = result.code.isEmpty ? "(空)" : result.code
+                captchaResult = "识别结果：\(shown)\n位数：\(result.code.count)（应为 \(KiteSimCaptcha.length)）\n置信度：\(String(format: "%.2f", result.score))"
+            } catch {
+                captchaResult = "识别失败：\(error.localizedDescription)"
+            }
+            isCheckingCaptcha = false
+        }
+    }
+
+    func checkRegion() {        guard !token.isEmpty else {
             regionReport = "请先登录一个账号，再检测当前地区。"
             return
         }

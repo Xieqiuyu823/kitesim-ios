@@ -38,25 +38,7 @@ final class Registrar {
         log("  邮箱验证码: \(emailCode)")
 
         log("[4/5] 识别图形验证码...")
-        let recognizer = try engine()
-        var captchaKey = ""
-        var captchaCode = ""
-        var lastError = ""
-        for i in 1...5 {
-            do {
-                let captcha = try await api.getCaptcha()
-                captchaKey = captcha.key
-                captchaCode = try recognizer.recognize(captcha.imageData)
-                log("  识别结果(第\(i)次): \(captchaCode.isEmpty ? "(空)" : captchaCode)")
-                if captchaCode.count == 4 { break }
-            } catch {
-                lastError = error.localizedDescription
-                log("  识别异常: \(lastError)")
-            }
-        }
-        guard captchaCode.count == 4 else {
-            throw KSError.api("图形验证码识别失败: \(lastError)")
-        }
+        let solved = try await solveCaptcha(log: log)
 
         log("[5/5] 提交注册...")
         let password = KiteSimAPI.genPassword()
@@ -64,10 +46,47 @@ final class Registrar {
             email: mail.address,
             password: password,
             emailCode: emailCode,
-            captchaKey: captchaKey,
-            captchaCode: captchaCode,
+            captchaKey: solved.key,
+            captchaCode: solved.code,
             invite: invite
         )
+    }
+
+    /// 抓 2~3 张验证码分别识别，取「4 位且置信度最高」的那一张提交。
+    /// 单张识别不理想时自动换图，比死磕同一张的成功率高很多。
+    private func solveCaptcha(log: @escaping (String) -> Void) async throws -> (key: String, code: String) {
+        let recognizer = try engine()
+        var best: (key: String, code: String, score: Float)?
+        var lastText = ""
+
+        for i in 1...3 {
+            let captcha = try await api.getCaptcha()
+            let result = try recognizer.recognizeDetailed(captcha.imageData)
+            let shown = result.code.isEmpty ? "(空)" : result.code
+            log("  识别(\(i)/3): \(shown)  置信度 \(String(format: "%.2f", result.score))")
+
+            if result.code.count == KiteSimCaptcha.length {
+                if best == nil || result.score > best!.score {
+                    best = (captcha.key, result.code, result.score)
+                }
+                // 够可信就不再浪费一次请求
+                if result.score >= 0.80 { break }
+            } else {
+                lastText = shown
+            }
+        }
+
+        guard let solved = best else {
+            throw KSError.api("图形验证码识别失败：3 次都没读出 \(KiteSimCaptcha.length) 位字符（最后一次：\(lastText)）")
+        }
+        return (solved.key, solved.code)
+    }
+
+    /// 自检用：抓一张验证码并识别，返回原图与结果，方便肉眼对照
+    func recognizeOne() async throws -> (image: Data, recognition: CaptchaOCR.Recognition) {
+        let captcha = try await api.getCaptcha()
+        let result = try engine().recognizeDetailed(captcha.imageData)
+        return (captcha.imageData, result)
     }
 
     /// 登录并拉取账号信息，返回 (token, info)

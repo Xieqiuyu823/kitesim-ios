@@ -40,7 +40,7 @@ struct AboutView: View {
                 }
                 .padding(16)
             }
-            .background(KSDesign.background.ignoresSafeArea())
+            .liquidScreenBackground()
             .navigationTitle("关于")
         }
     }

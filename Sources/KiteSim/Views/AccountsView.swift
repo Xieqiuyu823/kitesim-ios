@@ -95,7 +95,7 @@ struct AccountsView: View {
                 }
                 .padding(16)
             }
-            .background(KSDesign.background.ignoresSafeArea())
+            .liquidScreenBackground()
             .navigationTitle("KiteSim")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -122,10 +122,14 @@ struct AccountsView: View {
     private var heroCard: some View {
         HStack(spacing: 14) {
             Image(systemName: "simcard.2.fill")
-                .font(.system(size: 32))
-                .foregroundStyle(KSDesign.accent)
-                .frame(width: 56, height: 56)
-                .background(KSDesign.accent.opacity(0.12), in: .rect(cornerRadius: 16))
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 54, height: 54)
+                .background(
+                    KSDesign.brandGradient,
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
+                .shadow(color: KSDesign.accent.opacity(0.35), radius: 12, y: 5)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("KiteSim 助手")
@@ -137,7 +141,7 @@ struct AccountsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .background(.regularMaterial, in: .rect(cornerRadius: 24))
+        .glassCard(radius: 26)
     }
 }
 
@@ -179,6 +183,6 @@ private struct AccountRow: View {
             }
         }
         .padding(14)
-        .background(.regularMaterial, in: .rect(cornerRadius: 18))
+        .glassCard(radius: 20)
     }
 }

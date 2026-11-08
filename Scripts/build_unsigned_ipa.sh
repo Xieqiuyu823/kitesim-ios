@@ -124,6 +124,17 @@ for f in common_old.onnx charset.json; do
   fi
 done
 
+echo "==> 校验 App 图标已编译进 Assets.car"
+if [[ ! -f "$APP_PATH/Assets.car" ]]; then
+  echo "错误：App 包内缺少 Assets.car（图标未编译）" >&2
+  exit 1
+fi
+ICON_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$APP_PATH/Info.plist" 2>/dev/null || true)"
+if [[ "$ICON_NAME" != "AppIcon" ]]; then
+  echo "错误：Info.plist 缺少 CFBundleIconName=AppIcon（实际：'$ICON_NAME'）" >&2
+  exit 1
+fi
+
 echo "==> 打包标准未签名 IPA"
 rm -rf "$OUTPUT_DIR/Payload"
 mkdir -p "$OUTPUT_DIR/Payload"
