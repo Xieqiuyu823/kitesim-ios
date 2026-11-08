@@ -1,0 +1,5 @@
+# xtool 打包配置（schema v1）
+# 可用字段：version / orgID / bundleID / product / infoPath /
+#           entitlementsPath / iconPath / resources / extensions / skipLSP
+version: 1
+bundleID: com.kitesim.auto.ios

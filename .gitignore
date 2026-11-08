@@ -1,0 +1,21 @@
+.DS_Store
+/.build
+/Packages
+xcuserdata/
+DerivedData/
+.swiftpm/configuration/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.netrc
+
+/xtool
+
+# XcodeGen / xcodebuild / 未签名 IPA 输出
+/KiteSim.xcodeproj
+/Support/Info.plist
+/build/
+*.xcarchive
+*.ipa
+
+# 构建时从 ddddocr 官方源下载并校验，不入库（避免 13.6MB 二进制）
+/Sources/KiteSim/Resources/common_old.onnx
+/Sources/KiteSim/Resources/charset.json
