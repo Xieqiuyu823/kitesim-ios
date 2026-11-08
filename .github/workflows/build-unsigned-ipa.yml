@@ -1,0 +1,76 @@
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode and iOS SDK versions
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Build unsigned IPA
+        run: |
+          set -o pipefail
+          bash Scripts/build_unsigned_ipa.sh 2>&1 | tee build-output.log
+
+      - name: Upload unsigned IPA
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KiteSim-unsigned-ipa
+          path: build/ipa/KiteSim-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Create unsigned IPA release
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "unsigned-${{ github.run_number }}" \
+            build/ipa/KiteSim-unsigned.ipa \
+            --title "KiteSim unsigned IPA #${{ github.run_number }}" \
+            --notes "Automated unsigned iOS build. No Apple certificate or provisioning profile embedded."
+
+      - name: Report build failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Automated unsigned IPA build failed."
+            echo
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo
+            echo '```text'
+            tail -n 180 build-output.log || true
+            echo '```'
+          } > build-failure.md
+          gh issue create \
+            --title "Unsigned IPA build failed #${{ github.run_number }}" \
+            --body-file build-failure.md
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KiteSim-build-log-${{ github.run_number }}
+          path: build-output.log
+          if-no-files-found: ignore
+          retention-days: 14
