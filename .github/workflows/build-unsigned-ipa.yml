@@ -4,6 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    # 纯文档/工具脚本改动不必烧 macOS 构建额度
+    paths-ignore:
+      - "**.md"
+      - "Scripts/push_via_api.py"
+      - ".gitignore"
+      - ".gitattributes"
 
 permissions:
   contents: write

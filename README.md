@@ -2,89 +2,89 @@
 
 安卓端功能的 SwiftUI 移植版，使用 iOS 26 Liquid Glass 系统 API。
 
-**当前打包目标只有一个：通过云端 macOS 26 + Xcode 生成未签名 IPA。**
-不再使用 xtool，不需要 Xcode.xip、Apple ID、证书、描述文件或连接 iPhone。
+**打包目标只有一个：通过云端 macOS + Xcode 生成未签名 IPA。**
+不使用 xtool，不需要 Xcode.xip、Apple ID、证书、描述文件或连接 iPhone。
 
-## 一、云端构建（推荐）
+---
 
-把本目录作为 GitHub 仓库根目录上传。仓库已包含：
+## 一、当前状态（已实测构建成功）
 
-```text
-.github/workflows/build-unsigned-ipa.yml
-```
+| 项 | 值 |
+|---|---|
+| 仓库 | <https://github.com/Xieqiuyu823/kitesim-ios> |
+| 流水线 | `.github/workflows/build-unsigned-ipa.yml`（push 到 `main` 自动触发） |
+| 成功运行 | run #2，`success`，耗时约 1 分半 |
+| 构建机 | `macos-26`，**Xcode 26.6 (17F113)**，**iPhoneOS 26.5 SDK** |
+| 产物 | `KiteSim-unsigned.ipa`，**14,217,836 字节** |
+| SHA-256 | `e25e789960abb23ef4a19cce3039135cc4d485bf740e0eca18fe59806fe9e977` |
+| Release | <https://github.com/Xieqiuyu823/kitesim-ios/releases/tag/unsigned-2> |
 
-在 GitHub 仓库的 **Actions → Build unsigned IPA → Run workflow** 启动构建，或推送一次提交自动触发。
+流水线内置的自检在失败时会中断构建：
 
-流水线会：
+1. 主 `.app` 不含 `_CodeSignature`；
+2. 主 `.app` 不含 `embedded.mobileprovision`；
+3. `common_old.onnx` 与 `charset.json` 确实位于 App 包内（最大 2 层目录）。
 
-1. 启动 `macos-26`，使用其 Xcode / iOS 26 SDK；
-2. 安装 XcodeGen 并生成 `KiteSim.xcodeproj`；
-3. 拉取微软官方 ONNX Runtime SwiftPM 1.24.2；
-4. 用 `xcodebuild archive` 编译 Release 真机包，明确设置 `CODE_SIGNING_ALLOWED=NO`；
-5. 检查主 App 不含 `_CodeSignature` 和 `embedded.mobileprovision`；
-6. 按 `Payload/KiteSim.app` 标准结构压成 IPA；
-7. 上传 Artifact：**`KiteSim-unsigned-ipa`**。
+## 二、怎么重新构建
 
-Artifact 内的实际文件为：
-
-```text
-KiteSim-unsigned.ipa
-```
-
-### 免费额度
-
-- 公开仓库：标准 GitHub-hosted runner 免费。
-- 私有仓库：免费账户每月有包含额度；macOS 构建按官方倍率消耗，足够日常调试。
-- 不要上传 `accounts.jsonl`、账号密码、证书或描述文件。本目录当前不包含这些文件。
-
-## 二、在 macOS 上本地构建（可选）
-
-只需 Xcode 26+ 和 XcodeGen，不需要开发者账号：
+**方式 A：改代码后推送**
 
 ```bash
-brew install xcodegen
-cd ios
-bash Scripts/build_unsigned_ipa.sh
+git clone https://github.com/Xieqiuyu823/kitesim-ios.git
+cd kitesim-ios
+git commit -am "your change"
+git push origin main          # 自动触发构建
 ```
 
-输出位置：
+**方式 B：GitHub 网页手动触发**
 
-```text
-build/ipa/KiteSim-unsigned.ipa
-```
+进入仓库 **Actions → Build unsigned IPA → Run workflow**。
 
-脚本末尾会显示 IPA 大小和 SHA-256。
+构建成功后，Release 里直接给出 IPA；Actions Artifact 里也有一份 `KiteSim-unsigned-ipa`。
 
-## 三、工程结构
+> 构建会消耗 GitHub Actions 额度。公开仓库的标准 runner 免费，私有仓库按 macOS 倍率（10×）计费。
+
+## 三、两个 OCR 资源不入库
+
+仓库只保存文本源码，两个 OCR 资源在构建时下载并**按本项目原始文件的哈希校验**：
+
+| 资源 | 来源 | 校验 |
+|---|---|---|
+| `common_old.onnx`（13.6MB） | `sml2h3/ddddocr` 官方仓库 | SHA-256 `b8f2ad9c…ea0bf68` |
+| `charset.json`（8210 项） | 由 `ddddocr/charsets.py` 的 `CHARSET_OLD` 重建 | 拼接串 SHA-256 `2ad1d606…d136f0` |
+
+两个值都已与安卓端资源逐字节比对一致，因此 iOS 识别结果与安卓端相同。
+这样既避免把 13.6MB 二进制塞进仓库，也保证任何人能复现同一份资源。
+
+## 四、工程结构
 
 ```text
 ios/
-├── project.yml                    XcodeGen 工程、依赖、Info.plist、禁用签名设置
-├── Package.swift                  保留的 SwiftPM 清单；新 IPA 流水线不依赖 xtool
-├── Scripts/
-│   └── build_unsigned_ipa.sh      Archive + 未签名检查 + IPA 打包
+├── project.yml                    XcodeGen 工程、ORT 依赖、Info.plist、禁用签名
+├── Scripts/build_unsigned_ipa.sh  资源准备 + Archive + 未签名校验 + 打包 IPA
 ├── .github/workflows/
-│   └── build-unsigned-ipa.yml     macOS 26 云端构建
+│   └── build-unsigned-ipa.yml     macos-26 云端构建，成功发 Release，失败开 Issue 贴日志
+├── Package.swift                  早期 xtool/SwiftPM 清单，当前流水线不使用
+├── xtool.yml                      早期 xtool 配置，当前流水线不使用
 └── Sources/KiteSim/
     ├── KiteSimApp.swift           @main 入口
     ├── AppState.swift             全局状态 / 注册·登录·自检编排
     ├── Design.swift               Liquid Glass 设计系统
     ├── HTTPClient.swift           浏览器头 / 非 JSON 重试 / 代理 / 统一错误
-    ├── KiteSimAPI.swift           KiteSim 接口
-    ├── TempMail.swift             mail.tm 临时邮箱
+    ├── KiteSimAPI.swift           KiteSim 接口（**密码明文提交**）
+    ├── TempMail.swift             mail.tm 临时邮箱（含限流重试）
     ├── CaptchaOCR.swift           ONNX Runtime 推理 + CTC 解码
     ├── Registrar.swift            注册与登录编排
-    ├── Models.swift               Account / JSONL / App 资源定位
-    ├── Views/                     账号、网络、关于、WKWebView 页面
-    └── Resources/
-        ├── common_old.onnx        ddddocr 模型（13.6MB）
-        └── charset.json           CTC 字符集
+    ├── Models.swift               Account / JSONL / 资源定位
+    └── Views/                     账号、网络、关于、WKWebView
 ```
 
-## 四、构建注意点
+`Resources/` 由构建脚本在编译前填充，因此仓库里看不到这两个文件。
 
-- 最低系统为 **iOS 26**，因为 `glassEffect`、`GlassEffectContainer` 和玻璃按钮样式均为 iOS 26 API。
-- 资源统一通过 `Bundle.main` 加载，适用于 Xcode App target；不再引用仅 SwiftPM 生成的 `Bundle.module`。
-- ONNX Runtime 使用微软官方 SwiftPM 包，模型文件与安卓端一致。
-- 首次云端构建会真实检查 SwiftUI、WebKit 和 ONNX Runtime 的编译/链接；若失败，应根据 Actions 日志修复，不能把 YAML 校验通过当成 IPA 已构建成功。
-- 本流程只产出未签名 IPA，不包含签名、安装、续签或 App Store 发布步骤。
+## 五、构建注意点
+
+- 最低系统 **iOS 26**：`glassEffect` / `GlassEffectContainer` / 玻璃按钮样式都是 iOS 26 API。
+- 资源统一通过 `Bundle.main` 加载，不再引用只有 SwiftPM 才生成的 `Bundle.module`。
+- ONNX Runtime 用微软官方 SPM 包 1.24.2，`binaryTarget` 分发 XCFramework，实测在本流水线下**可正常链接**。
+- 已修复的 iOS 26 适配问题：`WKHTTPCookieStore.deleteCookie(_:completionHandler:)` 在 iOS 26 SDK 更名为 `delete(_:completionHandler:)`。
+- 只产出未签名 IPA，不包含签名、安装、续签或 App Store 发布步骤。
