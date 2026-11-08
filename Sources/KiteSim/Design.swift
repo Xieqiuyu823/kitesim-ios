@@ -221,7 +221,7 @@ struct LogConsole: View {
         .scrollIndicators(.hidden)
         .frame(height: 190)
         .clipShape(shape)
-        .background(
+        .background {
             ZStack {
                 Color(red: 0.05, green: 0.05, blue: 0.09).opacity(0.92)
                 // 顶部一层极淡的高光，与玻璃卡片共用同一套「液体厚度」语言
@@ -230,9 +230,9 @@ struct LogConsole: View {
                     startPoint: .top,
                     endPoint: .center
                 )
-            },
-            in: shape
-        )
+            }
+            .clipShape(shape)
+        }
         .overlay {
             shape.strokeBorder(.white.opacity(0.12), lineWidth: 0.8)
         }
